@@ -2,20 +2,15 @@ use std::fmt::Error;
 use std::sync::{Arc, Mutex};
 use chrono::prelude::*;
 
-use crate::models::todo::Todo;
+use crate::domain::{entities::todo::Todo, repository::trait_todo_repository::TodoRepositoryTrait};
 
-pub struct TodoRepository {
+pub struct TodoMemoryRepository {
     todos: Arc<Mutex<Vec<Todo>>>,
 }
 
-impl TodoRepository {
+impl TodoRepositoryTrait for TodoMemoryRepository {
     
-    pub fn new() -> Self {
-        let todos = Arc::new(Mutex::new(vec![]));
-        TodoRepository { todos }
-    }
-
-    pub fn create_todo(&self, todo: Todo) -> Result<Todo, Error> {
+    fn create_todo(&self, todo: Todo) -> Result<Todo, Error> {
         let mut todos = self.todos.lock().unwrap();
         let id = uuid::Uuid::new_v4().to_string();
         let created_at = Utc::now();
@@ -30,16 +25,16 @@ impl TodoRepository {
         Ok(todo)
     }
 
-    pub fn get_todos(&self) -> Result<Vec<Todo>, Error> {
+    fn get_todos(&self) -> Result<Vec<Todo>, Error> {
         Ok(self.todos.lock().unwrap().clone())
     }
 
-    pub fn get_todo_by_id(&self, id: &String) -> Option<Todo> {
+    fn get_todo_by_id(&self, id: &String) -> Option<Todo> {
         let todos = self.todos.lock().unwrap();
         todos.iter().find(|todo| todo.id == Some(id.to_string())).cloned()
     }
 
-    pub fn update_todo_by_id(&self, id: &str, todo: Todo) -> Option<Todo> {
+    fn update_todo_by_id(&self, id: &str, todo: Todo) -> Option<Todo> {
         let mut todos = self.todos.lock().unwrap();
         let updated_at = Utc::now();
         let index = todos.iter().position(|todo| todo.id == Some(id.to_string()))?;
@@ -53,7 +48,7 @@ impl TodoRepository {
         Some(todo)
     }
 
-    pub fn delete_todo_by_id(&self, id: &str) -> Option<Todo> {
+    fn delete_todo_by_id(&self, id: &str) -> Option<Todo> {
         let mut todos = self.todos.lock().unwrap();
         let index = todos.iter().position(|todo| todo.id == Some(id.to_string()))?;
         Some(todos.remove(index))
@@ -61,3 +56,9 @@ impl TodoRepository {
 
 }
  
+impl TodoMemoryRepository {
+    pub fn new() -> Self {
+        let todos = Arc::new(Mutex::new(vec![]));
+        TodoMemoryRepository { todos }
+    }
+}

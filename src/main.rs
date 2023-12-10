@@ -1,9 +1,12 @@
 use actix_web::{self, get, web, App, HttpResponse, HttpServer, Responder, Result};
+use domain::repository::trait_todo_repository::TodoRepositoryTrait;
 use serde::Serialize;
-
+use std::{sync::Arc, env};
 mod api;
-mod models;
-mod repository;
+mod data_access;
+mod domain;
+
+use data_access::repository::todo_repository::TodoRepository;
 
 #[derive(Serialize)]
 pub struct Response {
@@ -27,16 +30,14 @@ async fn not_found() -> Result<HttpResponse> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let todo_repository = repository::todo_repository::TodoRepository::new();
-    let app_data = web::Data::new(todo_repository);
-
+    let todo_repository: Arc<dyn TodoRepositoryTrait> = Arc::new(TodoRepository::new());
     HttpServer::new(move || {
+
         App::new()
+            .app_data(web::Data::new(Arc::clone(&todo_repository)))
             .configure(|app| {
-                app.service(web::scope("/api")
-                    .configure(api::routes::config));
+                app.service(web::scope("/api").configure(api::routes::config));
             })
-            .app_data(app_data.clone())
             .service(healthcheck)
             .default_service(web::route().to(not_found))
             .wrap(actix_web::middleware::Logger::default())
