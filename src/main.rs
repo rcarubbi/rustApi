@@ -1,4 +1,4 @@
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, Result};
+use actix_web::{self, get, web, App, HttpResponse, HttpServer, Responder, Result};
 use serde::Serialize;
 
 mod api;
@@ -30,13 +30,18 @@ async fn main() -> std::io::Result<()> {
     let todo_repository = repository::todo_repository::TodoRepository::new();
     let app_data = web::Data::new(todo_repository);
 
-    HttpServer::new(move || App::new()
-        .app_data(app_data.clone())
-        .configure(api::todo_controller::config)
-        .service(healthcheck)
-        .default_service(web::route().to(not_found))
-        .wrap(actix_web::middleware::Logger::default()))
-        .bind(("127.0.0.1", 8080))?
-        .run()
-        .await
+    HttpServer::new(move || {
+        App::new()
+            .configure(|app| {
+                app.service(web::scope("/api")
+                    .configure(api::routes::config));
+            })
+            .app_data(app_data.clone())
+            .service(healthcheck)
+            .default_service(web::route().to(not_found))
+            .wrap(actix_web::middleware::Logger::default())
+    })
+    .bind(("127.0.0.1", 8080))?
+    .run()
+    .await
 }
